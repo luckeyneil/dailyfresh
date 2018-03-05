@@ -17,6 +17,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 import sys
 
+# 为什么不加在0号位？因为0号位是当前目录''
 sys.path.insert(1, os.path.join(BASE_DIR, 'apps'))
 
 # Quick-start development settings - unsuitable for production
@@ -92,13 +93,23 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'dailyfresh',
-        'HOST': 'localhost',
+        'HOST': 'localhost',   # mysql主服务器，在本地
         'PORT': '3306',
         'USER': 'root',
         'PASSWORD': 'mima',
-    }
+    },
+    # 'slave': {
+    #     'ENGINE': 'django.db.backends.mysql',
+    #     'NAME': 'dailyfresh',
+    #     'HOST': '192.168.47.69',   # mysql从服务器，在windows中
+    #     'PORT': '3306',
+    #     'USER': 'root',
+    #     'PASSWORD': 'mima',
+    # },
 }
 
+# 配置读写分离
+# DATABASE_ROUTERS = ['utils.db_router.MasterSlaveDBRouter']
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/

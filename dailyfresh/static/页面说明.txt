@@ -11,7 +11,7 @@
 4、cart.html 我的购物车页，列出已放入购物车上的商品
 
 
-5、place_order.html 提交订单页
+5、车 提交订单页
 
 
 6、login.html 登录页面
