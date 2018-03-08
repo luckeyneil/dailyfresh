@@ -111,6 +111,13 @@ DATABASES = {
 # 配置读写分离
 # DATABASE_ROUTERS = ['utils.db_router.MasterSlaveDBRouter']
 
+SESSION_ENGINE = 'redis_sessions.session'
+SESSION_REDIS_HOST = 'localhost'
+SESSION_REDIS_PORT = 6379
+SESSION_REDIS_DB = 2
+SESSION_REDIS_PASSWORD = ''
+SESSION_REDIS_PREFIX = 'session'
+
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/
 
@@ -135,3 +142,10 @@ STATICFILES_DIRS = [
 ]
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'static/media')
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # 导入邮件模块
+EMAIL_HOST = 'smtp.163.com'  # 发邮件主机
+EMAIL_PORT = 25  # 发邮件端口
+EMAIL_HOST_USER = 'luckey_one@163.com'  # 授权的邮箱
+EMAIL_HOST_PASSWORD = 'q1w2e3r4'  # 邮箱授权时获得的密码，非注册登录密码
+EMAIL_FROM = '国务院<luckey_one@163.com>'  # 发件人抬头

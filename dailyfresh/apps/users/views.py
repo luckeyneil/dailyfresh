@@ -1,13 +1,16 @@
 import re
 
+from django.conf import settings
 from django.contrib.sessions.backends import db
+from django.core.mail import send_mail
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.views.generic import View
 
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, SignatureExpired
 from users.models import User
-
+from celerytasks.tasks import send_active_email
 
 # Create your views here.
 
@@ -96,12 +99,61 @@ class RegisterView(View):
         user.is_active = False
         # 保存数据到数据库
         user.save()
+        # return HttpResponse('注册逻辑实现')
 
-        return HttpResponse('注册逻辑实现')
+        token = user.generate_active_token()
+        # subject = "天天生鲜用户激活"  # 标题
+        message = ""  # 文本邮件体
+        # from_email = settings.EMAIL_FROM  # 发件人
+        recipient_list = ['luckey_one@163.com']  # 接收人
+        # html_body = '<h1>尊敬的用户 %s, 感谢您注册天天生鲜！</h1>' \
+        #             '<br/><p>请点击此链接激活您的帐号<a href="http://127.0.0.1:8000/users/active/%s">' \
+        #             'http://127.0.0.1:8000/users/active/%s</a></p>' % (username, token, token)
+        # send_mail如何使用？？？？？？？？？
+        # send_mail(subject, message, from_email, recipient_list,
+        #       fail_silently=False, auth_user=None, auth_password=None,
+        #       connection=None, html_message=html_body)
+
+        # 发送邮件的方法  发邮件是耗时的  处理图片 音视频 需要异步执行
+        # 通过delay调用 通知work执行任务
+        send_active_email.delay(recipient_list,user.username,token)
+
+        return HttpResponse('发动激活邮件实现')
 
 
 class ActiveView(View):
     """激活逻辑"""
-    def get(self, request):
-        pass
-        # return render(request, '')
+    def get(self, request, token):
+        # 生成序列化器,默认过期时间就是3600秒，可不写
+        s = Serializer(secret_key=settings.SECRET_KEY)
+
+        # 1.获取token值的明文,用loads，注意，不是load
+        try:
+            result = s.loads(token)
+            print(result)    # 转码的字典明文
+
+            # Exception Type: SignatureExpired
+            # 1.1 注意捕获token过期异常
+        except SignatureExpired:
+            return HttpResponse('激活链接已过期')
+
+        # 2.获取明文中的键‘confirm’对应的值user_id
+        user_id = result.get('confirm')
+
+        # 3.通过user_id 获取对应id的用户
+        try:
+            user = User.objects.get(id=user_id)
+            # 3.1 注意捕获用户id不存在的异常
+        except User.DoesNotExist:
+            return HttpResponse('用户id不存在')
+        # 4.激活用户并保存
+        user.is_active = True
+        user.save()
+
+        # 5.重定向到登录界面
+        # return redirect()
+        return HttpResponse('这里重定向到登录界面')
+
+
+
+

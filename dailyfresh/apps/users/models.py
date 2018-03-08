@@ -6,7 +6,7 @@ from django.contrib.auth.models import AbstractUser
 from utils.models import BaseModel
 from django.conf import settings
 from goods.models import GoodsSKU
-# from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 
 class User(AbstractUser, BaseModel):
@@ -15,11 +15,11 @@ class User(AbstractUser, BaseModel):
     class Meta:
         db_table = "df_users"
 
-    # def generate_active_token(self):
+    def generate_active_token(self):
         """生成激活令牌"""
-        # serializer = Serializer(settings.SECRET_KEY, 3600)
-        # token = serializer.dumps({"confirm": self.id})  # 返回bytes类型
-        # return token.decode()
+        serializer = Serializer(settings.SECRET_KEY, 3600)
+        token = serializer.dumps({"confirm": self.id})  # 返回bytes类型
+        return token.decode()
 
 
 class Address(BaseModel):
