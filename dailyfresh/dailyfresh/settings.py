@@ -14,7 +14,6 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 import os
 import sys
 
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 为什么不加在0号位？因为0号位是当前目录''
@@ -168,3 +167,19 @@ SESSION_CACHE_ALIAS = "default"
 
 # 已登录状态认证失败后跳转的路径
 LOGIN_URL = '/users/login/'
+
+# 配置Django自定义的文件存储系统
+DEFAULT_FILE_STORAGE = 'utils.fastdfs.storage.FastDFSStorage'
+
+# ret = {
+# 	'Group name':'group1',
+# 	'Status':'Upload successed.',
+# 	'Remote file_id':'group1/M00/00/00/wKjzh0_xaR63RExnAAAaDqbNk5E1398.py',
+# 	'Uploaded size':'6.0KB',
+# 	'Local file name':'test',
+# 	 'Storage IP':'192.168.243.133'
+# }
+
+# FastFDS使用的配置信息
+CLIENT_CONF = os.path.join(BASE_DIR, 'utils/fastdfs/client.conf')
+SERVER_IP = 'http://192.168.141.130:8888/'

@@ -5,7 +5,7 @@ from django.db import models
 from tinymce.models import HTMLField
 
 from utils.models import BaseModel
-# from tinymce.models import HTMLField
+from tinymce.models import HTMLField
 
 
 class GoodsCategory(BaseModel):
