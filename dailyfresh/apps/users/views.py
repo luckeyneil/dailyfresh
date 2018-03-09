@@ -243,3 +243,27 @@ class AddressView(LoginRequiredMinix, View):
     def post(self, request):
         """修改地址信息"""
         pass
+
+
+class InfoView(LoginRequiredMinix, View):
+    """用户信息"""
+
+    def get(self, request):
+        """提供用户信息的页面"""
+        return render(request, 'user_center_info.html')
+
+    def post(self, request):
+        """修改地址信息"""
+        pass
+
+class OrderView(LoginRequiredMinix, View):
+    """用户订单"""
+
+    def get(self, request):
+        """提供用户订单的页面"""
+        return render(request, 'user_center_order.html')
+
+    def post(self, request):
+        """修改地址信息"""
+        pass
+

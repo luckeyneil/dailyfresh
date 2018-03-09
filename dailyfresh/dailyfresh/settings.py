@@ -40,6 +40,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'tinymce',
     'users',
     'goods',
     'orders',
@@ -183,3 +184,11 @@ DEFAULT_FILE_STORAGE = 'utils.fastdfs.storage.FastDFSStorage'
 # FastFDS使用的配置信息
 CLIENT_CONF = os.path.join(BASE_DIR, 'utils/fastdfs/client.conf')
 SERVER_IP = 'http://192.168.141.130:8888/'
+
+# 富文本编辑config配置
+TINYMCE_DEFAULT_CONFIG = {
+  'theme': 'advanced', # 丰富样式
+  'width': 600,
+  'height': 400,
+}
+

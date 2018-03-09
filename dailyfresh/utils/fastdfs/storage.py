@@ -19,6 +19,7 @@ class FastDFSStorage(Storage):
     2.重写exists方法，来判断Django中是否存在文件，因为确实不存在，所以直接返回False
     3.重写url()方法，方便在Html中调用时直接使用，将nginx的域名拼接起来，返回完整地址
     """
+
     def __init__(self, client_conf=None, server_ip=None):
         """
         两个参数，即settings中的两个配置
@@ -63,7 +64,7 @@ class FastDFSStorage(Storage):
             print(e)
             raise e
 
-        #     1.2.4 判断是否上传成功
+        # 1.2.4 判断是否上传成功
 
         # ret = {
         # 	'Group name':'group1',
@@ -75,9 +76,9 @@ class FastDFSStorage(Storage):
         # }
 
         if ret.get('Status') == 'Upload successed.':
-        #         1.2.4.1 若成功，返回保存的文件路径
+            #         1.2.4.1 若成功，返回保存的文件路径
             return ret.get('Remote file_id')
-        #         1.2.4.2 若失败，抛出异常‘上传失败’
+        # 1.2.4.2 若失败，抛出异常‘上传失败’
         else:
             raise Exception('上传文件失败')
 
