@@ -1,7 +1,8 @@
 from django.conf.urls import url
 
-from users import views
+from goods import views
 
 urlpatterns = [
     # url(r'^register/$', views.register)
+    url(r'^$', views.index, name='index'),
 ]

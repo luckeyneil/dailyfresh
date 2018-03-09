@@ -1,6 +1,7 @@
 import re
 
 from django.conf import settings
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.sessions.backends import db
 from django.core.mail import send_mail
 from django.core.urlresolvers import reverse
@@ -9,8 +10,9 @@ from django.shortcuts import render, redirect
 from django.views.generic import View
 
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, SignatureExpired
-from users.models import User
 from celerytasks.tasks import send_active_email
+from users.models import User
+
 
 # Create your views here.
 
@@ -31,6 +33,7 @@ from celerytasks.tasks import send_active_email
 
 # 类视图
 # from djcelery import db
+from utils.views import LoginRequiredMinix
 
 
 class RegisterView(View):
@@ -116,13 +119,14 @@ class RegisterView(View):
 
         # 发送邮件的方法  发邮件是耗时的  处理图片 音视频 需要异步执行
         # 通过delay调用 通知work执行任务
-        send_active_email.delay(recipient_list,user.username,token)
+        send_active_email.delay(recipient_list, user.username, token)
 
         return HttpResponse('发动激活邮件实现')
 
 
 class ActiveView(View):
     """激活逻辑"""
+
     def get(self, request, token):
         # 生成序列化器,默认过期时间就是3600秒，可不写
         s = Serializer(secret_key=settings.SECRET_KEY)
@@ -130,7 +134,7 @@ class ActiveView(View):
         # 1.获取token值的明文,用loads，注意，不是load
         try:
             result = s.loads(token)
-            print(result)    # 转码的字典明文
+            print(result)  # 转码的字典明文
 
             # Exception Type: SignatureExpired
             # 1.1 注意捕获token过期异常
@@ -155,5 +159,87 @@ class ActiveView(View):
         return HttpResponse('这里重定向到登录界面')
 
 
+class LoginView(View):
+    """登录视图"""
+
+    def get(self, request):
+
+        return render(request, 'login.html')
+
+    def post(self, request):
+        """
+        # 1.获取输入的用户名密码   request.POST.get()
+
+        # 2.验证用户名密码是否为空   all()
+
+        # 3.验证是否登录成功
+            # 3.1 认证系统函数获取此用户名和密码的用户对象   authenticate(用户名，密码)
+                # 3.1.1 判断此用户是否存在   user is None
+            # 3.2 判断此用户对象是否激活    user.is_activate == False
+            # 3.3 登录状态存入session     login(request, user)
+        :param request:
+        :return:
+        """
+        # 0.初始化，先登出
+        logout(request)
+
+        # 1.获取输入的用户名密码
+        username = request.POST.get('username')
+        pwd = request.POST.get('pwd')
+
+        # 2.验证用户名密码是否为空   all()
+        if not all([username, pwd]):
+            return redirect(reverse('users:login'))
+
+        # print(222)
+        # 3.验证是否登录成功
+        # 3.1 认证系统函数获取此用户名和密码的用户对象    authenticate(用户名，密码)
+        user = authenticate(username=username, password=pwd)
+
+        # 3.1.1 判断此用户是否存在   user is None
+        if user is None:
+            # return redirect(reverse('users:login'))
+            # print('1111')
+            return render(request, 'login.html', {'errmsg': '用户名或密码错误'})
+
+        # 3.2 判断此用户对象是否激活   user.is_activate == False
+        if user.is_active is False:
+            return render(request, 'login.html', {'errmsg': '用户未激活'})
+
+        # 3.3 登录状态存入session     login(request, user)
+        login(request, user)
+
+        # 4.状态保持
+        rem = request.POST.get('rememberd')
+
+        if rem == 'on':
+            request.session.set_expiry(None)
+        else:
+            request.session.set_expiry(0)
+
+        # 重定向到之前打开页面或主页
+        # return HttpResponse('登录成功')
+        next_url = request.GET.get('next')
+        print(next_url)   # 当没有get时，返回None
+        if next_url:
+            return redirect(next_url)
+        else:
+            return redirect(reverse('goods:index'))
 
 
+class LogoutView(View):
+    """登出逻辑"""
+    def get(self, request):
+        logout(request)
+        return redirect(reverse('goods:index'))
+
+
+class AddressView(LoginRequiredMinix, View):
+    """用户地址"""
+    def get(self, request):
+        """提供用户地址的页面"""
+        return render(request, 'user_center_site.html')
+
+    def post(self, request):
+        """修改地址信息"""
+        pass

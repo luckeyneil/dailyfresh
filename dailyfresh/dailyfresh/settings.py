@@ -12,10 +12,10 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+import sys
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-import sys
 
 # 为什么不加在0号位？因为0号位是当前目录''
 sys.path.insert(1, os.path.join(BASE_DIR, 'apps'))
@@ -31,12 +31,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
 
 INSTALLED_APPS = (
     'django.contrib.admin',
-    #django默认开启用户认证模块
+    # django默认开启用户认证模块
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -69,8 +68,8 @@ ROOT_URLCONF = 'dailyfresh.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')]
-        ,
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -85,7 +84,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'dailyfresh.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/1.8/ref/settings/#databases
 
@@ -93,7 +91,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'dailyfresh',
-        'HOST': 'localhost',   # mysql主服务器，在本地
+        'HOST': 'localhost',  # mysql主服务器，在本地
         'PORT': '3306',
         'USER': 'root',
         'PASSWORD': 'mima',
@@ -111,12 +109,13 @@ DATABASES = {
 # 配置读写分离
 # DATABASE_ROUTERS = ['utils.db_router.MasterSlaveDBRouter']
 
-SESSION_ENGINE = 'redis_sessions.session'
-SESSION_REDIS_HOST = 'localhost'
-SESSION_REDIS_PORT = 6379
-SESSION_REDIS_DB = 2
-SESSION_REDIS_PASSWORD = ''
-SESSION_REDIS_PREFIX = 'session'
+# session保存在redis中
+# SESSION_ENGINE = 'redis_sessions.session'
+# SESSION_REDIS_HOST = 'localhost'
+# SESSION_REDIS_PORT = 6379
+# SESSION_REDIS_DB = 2
+# SESSION_REDIS_PASSWORD = ''
+# SESSION_REDIS_PREFIX = 'session'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/
@@ -131,11 +130,10 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
-STATIC_URL = '/static/'   # 此处的static是url路径
+STATIC_URL = '/static/'  # 此处的static是url路径
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static')  # 此处的static是文件路径
@@ -149,3 +147,24 @@ EMAIL_PORT = 25  # 发邮件端口
 EMAIL_HOST_USER = 'luckey_one@163.com'  # 授权的邮箱
 EMAIL_HOST_PASSWORD = 'q1w2e3r4'  # 邮箱授权时获得的密码，非注册登录密码
 EMAIL_FROM = '国务院<luckey_one@163.com>'  # 发件人抬头
+
+# 缓存
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/5",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
+}
+
+# Session
+# http://django-redis-chs.readthedocs.io/zh_CN/latest/#session-backend
+
+# 指定session存在redis里
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+
+# 已登录状态认证失败后跳转的路径
+LOGIN_URL = '/users/login/'
