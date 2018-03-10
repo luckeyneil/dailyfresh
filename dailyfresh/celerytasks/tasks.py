@@ -1,9 +1,13 @@
+# vim tasks.py
+#!/usr/bin/env python
+# File: task.py
+#
+
 import os
 
-# os.environ["DJANGO_SETTINGS_MODULE"] = "dailyfresh.settings"
+os.environ["DJANGO_SETTINGS_MODULE"] = "dailyfresh.settings"
 # # 放到Celery服务器上时添加的代码
 # import django
-#
 # django.setup()
 
 ################################################################
@@ -16,11 +20,17 @@ from django.template import loader
 from goods.models import *
 
 # 创建celery应用对象
-app = Celery(main='celerytasks.tasks', broker='redis://127.0.0.1:6379/6')
-
+app = Celery('celerytasks.tasks', broker='redis://127.0.0.1:6379/6')
 
 # Celery()
 
+#app.conf.CELERY_TASK_SERIALIZER='json'
+# app.conf.CELERY_ACCEPT_CONTENT=['json']
+# app.conf.update(
+#     CELERY_TASK_SERIALIZER='json',
+#     CELERY_ACCEPT_CONTENT=['json'],
+#     CELERY_RESULT_SERIALIZER='json',
+#     )
 
 @app.task  # send_active_email = app.task(send_active_email)
 def send_active_email(recipient_list, username, token):
@@ -37,7 +47,7 @@ def send_active_email(recipient_list, username, token):
 
 
 @app.task
-def genarate_static_index_html():
+def generate_static_index_html():
     """
     生成静态主页并写入index.html文件中
     :return:
@@ -72,10 +82,12 @@ def genarate_static_index_html():
     }
 
     # 生成静态页面数据
-    # 加载模板,  这一步是怎么找到静态模板文件的？？？？？
-    template = loader.get_template('static_index.html')
-    # 模板调用render，生成静态页面数据
-    html_data = template.render(context)
+    # # 加载模板,  这一步是怎么找到静态模板文件的？？？？？
+    # template = loader.get_template('static_index.html')
+    # # 模板调用render，生成静态页面数据
+    # html_data = template.render(context)
+
+    html_data = loader.render_to_string('static_index.html', context)
 
     # 写入index.html文件
     file_path = os.path.join(settings.STATICFILES_DIRS[0], 'index.html')
