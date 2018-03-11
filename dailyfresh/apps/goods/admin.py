@@ -1,5 +1,7 @@
 from django.contrib import admin
 # from celerytasks.tasks import generate_static_index_html
+from django.core.cache import cache
+
 from celerytasks import tasks
 from goods.models import *
 
@@ -17,11 +19,14 @@ class BaseAdmin(admin.ModelAdmin):
         obj.save()
         # 调用celery异步生成静态文件方法
         tasks.generate_static_index_html.delay()
+        # 删除缓存
+        cache.delete('index_page_data')
 
     def delete_model(self, request, obj):
         """后台保存对象数据时使用"""
         obj.delete()
         tasks.generate_static_index_html.delay()
+        cache.delete('index_page_data')
 
 
 # @admin.register(IndexPromotionBanner)

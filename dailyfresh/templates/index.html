@@ -67,12 +67,12 @@
                     <span>|</span>
                     {#                这里是标题类商品#}
                     {% for goodsbanner in category.title_goods %}
-                        <a href="#">{{ goodsbanner.sku.name }}</a>
+                        <a href="{% url 'goods:detail' goodsbanner.sku.id %}">{{ goodsbanner.sku.name }}</a>
 
                     {% endfor %}
 
                 </div>
-                <a href="#" class="goods_more fr" id="fruit_more">查看更多 ></a>
+                <a href="{% url 'goods:list' category.id 1 %}" class="goods_more fr" id="fruit_more">查看更多 ></a>
             </div>
 
             <div class="goods_con clearfix">
@@ -82,8 +82,8 @@
                     {% for goodsbanner in category.picture_goods %}
 
                         <li>
-                            <h4><a href="#">{{ goodsbanner.sku.name }}</a></h4>
-                            <a href="#"><img src="{{ goodsbanner.sku.default_image.url }}"></a>
+                            <h4><a href="{% url 'goods:detail' goodsbanner.sku.id %}">{{ goodsbanner.sku.name }}</a></h4>
+                            <a href="{% url 'goods:detail' goodsbanner.sku.id %}"><img src="{{ goodsbanner.sku.default_image.url }}"></a>
                             <div class="prize">¥ {{ goodsbanner.sku.price }}</div>
                         </li>
                     {% endfor %}
