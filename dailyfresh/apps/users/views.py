@@ -11,8 +11,7 @@ from django.views.generic import View
 
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, SignatureExpired
 from celerytasks.tasks import send_active_email
-from users.models import User
-
+from users.models import User, Address
 
 # Create your views here.
 
@@ -220,7 +219,7 @@ class LoginView(View):
         # 重定向到之前打开页面或主页
         # return HttpResponse('登录成功')
         next_url = request.GET.get('next')
-        print(next_url)   # 当没有get时，返回None
+        print(next_url)  # 当没有get时，返回None
         if next_url:
             return redirect(next_url)
         else:
@@ -229,6 +228,7 @@ class LoginView(View):
 
 class LogoutView(View):
     """登出逻辑"""
+
     def get(self, request):
         logout(request)
         return redirect(reverse('goods:index'))
@@ -236,13 +236,68 @@ class LogoutView(View):
 
 class AddressView(LoginRequiredMinix, View):
     """用户地址"""
+
     def get(self, request):
         """提供用户地址的页面"""
-        return render(request, 'user_center_site.html')
+        # 从request中获取user对象，中间件从验证请求中的用户，所以request中带有user
+        user = request.user
+
+        try:
+            # 查询用户地址：根据创建时间排序，取第1个地址
+            # address = Address.objects.filter(user=user).order_by('create_time')[0]
+            # address = user.address_set.order_by('create_time')[0]
+            print(111)
+            address = user.address_set.latest('create_time')
+            print('address=', address)
+            # address=address.objects.get('detail_addr')
+            # print('address=', address)
+
+        except Address.DoesNotExist:
+            # 如果地址信息不存在
+            address = None
+
+        # 构造上下文
+        context = {
+            # 'user':user, # request中自带user,调用模板时，request会传给模板
+            'address': address
+        }
+
+        # return HttpResponse('这是用户中心地址页面')
+        return render(request, 'user_center_site.html', context)
 
     def post(self, request):
         """修改地址信息"""
-        pass
+        # 接收地址表单数据
+        user = request.user
+        recv_name = request.POST.get("recv_name")
+        addr = request.POST.get("addr")
+        zip_code = request.POST.get("zip_code")
+        recv_mobile = request.POST.get("recv_mobile")
+        print([recv_name, addr, zip_code, recv_mobile])
+        # 参数校验
+        if all([recv_name, addr, zip_code, recv_mobile]):
+            # address = Address(
+            #     user=user,
+            #     receiver_name=recv_name,
+            #     detail_addr=addr,
+            #     zip_code=zip_code,
+            #     receiver_mobile=recv_mobile
+            # )
+            # address.save()
+
+            # 保存地址信息到数据库
+            ret = Address.objects.create(
+                user=user,
+                receiver_name=recv_name,
+                detail_addr=addr,
+                zip_code=zip_code,
+                receiver_mobile=recv_mobile
+            )
+
+            print(ret)
+            print('保存成功')
+
+        return redirect(reverse("users:address"))
 
 
 class InfoView(LoginRequiredMinix, View):
@@ -256,6 +311,7 @@ class InfoView(LoginRequiredMinix, View):
         """修改地址信息"""
         pass
 
+
 class OrderView(LoginRequiredMinix, View):
     """用户订单"""
 
@@ -266,4 +322,3 @@ class OrderView(LoginRequiredMinix, View):
     def post(self, request):
         """修改地址信息"""
         pass
-
