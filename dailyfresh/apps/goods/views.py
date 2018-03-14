@@ -1,3 +1,5 @@
+import json
+
 from django.core.cache import cache
 from django.core.paginator import EmptyPage, Paginator
 from django.core.urlresolvers import reverse
@@ -10,7 +12,59 @@ from django_redis import get_redis_connection
 from goods.models import *
 
 
-class IndexView(View):
+class BaseCartView(View):
+    """提取出的添加购物车的基类"""
+
+    def get_cart_num(self, request):
+        """
+        专门用来提取返回两种情况下的购物车数量
+        :param request:
+        :return:
+        """
+        # 查询购物车信息：不能被缓存，因为会经常变化
+        cart_num = 0
+        # 如果用户登录，就获取购物车数据
+        if request.user.is_authenticated():
+            # 创建redis_conn对象
+            redis_conn = get_redis_connection('default')
+            # 获取用户id
+            user_id = request.user.id
+            # 从redis中获取购物车数据，返回字典
+            cart_dict = redis_conn.hgetall('cart_%s' % user_id)
+            # 遍历购物车字典的值，累加购物车的值
+            for value in cart_dict.values():
+                cart_num += int(value)
+
+        else:
+            # 如果用户未登录，就获取cookie中数据
+            cart_json = request.COOKIES.get('cart')  # json字符串
+            # 2.
+            # 判断购物车(cart_json)
+            # 数据是否存在，有可能用户从来没有操作过购物车
+            if cart_json:
+                # 2.1.如果(cart_json)存在就把它转成字典(cart_dict)
+                cart_dict = json.loads(cart_json)
+                # cart_dict = eval(cart_json)
+            else:
+                # 2.2.如果(cart_json)不存在就定义空字典(cart_dict)
+                cart_dict = {}
+
+            # 4.
+            # 将(cart_dict)
+            # 重新生成json字符串，方便写入到cookie
+            cart_json = json.dumps(cart_dict)
+            # cart_json = str(cart_dict)
+
+            # 7.
+            # 计算购物车数量总和，方便前端展示
+            cart_num = 0
+            for val in cart_dict.values():
+                cart_num += val
+
+        return cart_num
+
+
+class IndexView(BaseCartView):
     """
     主页信息展示
     """
@@ -63,19 +117,8 @@ class IndexView(View):
         else:
             print('提取index缓存数据')
 
-        # 查询购物车信息：不能被缓存，因为会经常变化
-        cart_num = 0
-        # 如果用户登录，就获取购物车数据
-        if request.user.is_authenticated():
-            # 创建redis_conn对象
-            redis_conn = get_redis_connection('default')
-            # 获取用户id
-            user_id = request.user.id
-            # 从redis中获取购物车数据，返回字典
-            cart_dict = redis_conn.hgetall('cart_%s' % user_id)
-            # 遍历购物车字典的值，累加购物车的值
-            for value in cart_dict.values():
-                cart_num += int(value)
+        # 调用父类的提取购物车数量的方法
+        cart_num = self.get_cart_num(request)
 
         # 补充购物车数据
         # context.update(cart_num=cart_num)
@@ -84,7 +127,7 @@ class IndexView(View):
         return render(request, 'index.html', context)
 
 
-class DetailView(View):
+class DetailView(BaseCartView):
     """商品详细信息页面"""
 
     def get(self, request, sku_id):
@@ -163,7 +206,7 @@ class DetailView(View):
 # /list/category_id/page_num/?sort='默认，价格，人气'
 
 
-class ListView(View):
+class ListView(BaseCartView):
     """商品列表"""
 
     def get(self, request, category_id, page_num):
@@ -233,10 +276,10 @@ class ListView(View):
             page_list = page_list
         elif page_num <= 3:
             page_list = page_list[0:5]
-        elif page_num >= paginator.num_pages-2:
-            page_list = page_list[paginator.num_pages-5:paginator.num_pages]
+        elif page_num >= paginator.num_pages - 2:
+            page_list = page_list[paginator.num_pages - 5:paginator.num_pages]
         else:
-            page_list = page_list[page_num-2:page_num+3]
+            page_list = page_list[page_num - 2:page_num + 3]
 
         # 构造上下文
         context = {

@@ -147,7 +147,49 @@
                 count: $("#num_show").val(),
                 csrfmiddlewaretoken: "{{ csrf_token }}"
             };
-            // 使用ajax向后端发送数据
+            {#            // 使用ajax向后端发送数据#}
+
+            $.ajax({
+                url: '/cart/add/',
+                type: 'post',
+                data: req_data,
+                datatype: 'json'
+            }).done(function (data) {
+                {#                alert('ajax发送成功');#}
+                var code = data.code;
+                var msg = data.msg;
+                var cart_num = data.cart_num;
+                {#                alert(code, msg);#}
+                if (code == 0) {
+                    // 添加到购物车请求成功
+                    alert(msg);
+                    {#                    var show_count = $('#show_count')#}
+                    $(".add_jump").stop().animate({
+                            'left': $to_y + 7,
+                            'top': $to_x + 7
+                        },
+                        "fast", function () {
+                            $(".add_jump").fadeOut('fast', function () {
+                                // 展示购物车总数量
+                                $('#show_count').html(cart_num);
+                            });
+                        });
+
+                } else if (code == 1) {
+                    alert(msg);
+                    var path = data.path;   // 这个path是添加购物车的path，没用啊
+                    var currentUrl = location.href;  // 这个含有域名
+                    alert(currentUrl);
+                    location.href = '/users/login/?next=/goods/detail/{{ sku.id }}'; // 如果未登录，跳转到登录页面
+                } else {
+                    alert(msg);
+                }
+
+            }).fail(function () {
+                alert('ajax请求失败')
+            })
+
+
             {#            $.post("/cart/add", req_data, function (response_data) {#}
             {#                // 根据response_data中的code决定处理效果#}
             {#                if (1 == response_data.code) {#}
@@ -169,6 +211,8 @@
             {#                    alert(response_data.message);#}
             {#                }#}
             {#            }, "json");#}
+
+
         });
         $("#add").click(function () {
             var num_show = $("#num_show").val();
