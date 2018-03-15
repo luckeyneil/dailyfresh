@@ -57,10 +57,11 @@ class BaseCartView(View):
 
             # 7.
             # 计算购物车数量总和，方便前端展示
-            cart_num = 0
+            # cart_num = 0
             for val in cart_dict.values():
                 cart_num += val
 
+        print(cart_num)
         return cart_num
 
 
@@ -77,7 +78,7 @@ class IndexView(BaseCartView):
         """
         # 从缓存中获取缓存页面数据
         context = cache.get('index_page_data')
-        print(context)
+        # print(context)
 
         if context is None:
             print('生成index缓存')
@@ -178,17 +179,18 @@ class DetailView(BaseCartView):
             print('提取缓存detail数据')
 
         # 购物车数量
-        cart_num = 0
+        cart_num = self.get_cart_num(request)
+
         # 如果是登录的用户
         if request.user.is_authenticated():
             # 获取用户id
             user_id = request.user.id
             # 从redis中获取购物车信息
             redis_conn = get_redis_connection("default")
-            # 如果redis中不存在，会返回None
-            cart_dict = redis_conn.hgetall("cart_%s" % user_id)
-            for val in cart_dict.values():
-                cart_num += int(val)
+            # # 如果redis中不存在，会返回None
+            # cart_dict = redis_conn.hgetall("cart_%s" % user_id)
+            # for val in cart_dict.values():
+            #     cart_num += int(val)
 
             # 浏览记录: lpush history_userid sku_1, sku_2
             # 移除已经存在的本商品浏览记录
@@ -204,8 +206,6 @@ class DetailView(BaseCartView):
 
 
 # /list/category_id/page_num/?sort='默认，价格，人气'
-
-
 class ListView(BaseCartView):
     """商品列表"""
 
@@ -222,17 +222,8 @@ class ListView(BaseCartView):
             return redirect(reverse('goods:index'))
 
         # 购物车
-        cart_num = 0
-        # 如果是登录的用户
-        if request.user.is_authenticated():
-            # 获取用户id
-            user_id = request.user.id
-            # 从redis中获取购物车信息
-            redis_conn = get_redis_connection("default")
-            # 如果redis中不存在，会返回None
-            cart_dict = redis_conn.hgetall("cart_%s" % user_id)
-            for val in cart_dict.values():
-                cart_num += int(val)
+        cart_num = self.get_cart_num(request)
+
 
         # 查询商品所有类别
         categorys = GoodsCategory.objects.all()

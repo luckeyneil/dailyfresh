@@ -1,3 +1,4 @@
+import json
 import re
 
 from django.conf import settings
@@ -8,6 +9,7 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.views.generic import View
+from django_redis import get_redis_connection
 
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, SignatureExpired
 from celerytasks.tasks import send_active_email
@@ -216,14 +218,53 @@ class LoginView(View):
         else:
             request.session.set_expiry(0)
 
-        # 重定向到之前打开页面或主页
-        # return HttpResponse('登录成功')
-        next_url = request.GET.get('next')
-        print(next_url)  # 当没有get时，返回None
-        if next_url:
-            return redirect(next_url)
+        # 在页面跳转之前
+        # 获取cookie中的购物车数据
+        # 获取redis中的购物车数据
+        cart_json = request.COOKIES.get('cart')  # 是字符串
+        if cart_json:
+            cart_dict_cookie = json.loads(cart_json)  # 转为字典
         else:
-            return redirect(reverse('goods:index'))
+            cart_dict_cookie = {}
+
+        # 如果cookie中存在的，redis中也有，则进行数量累加
+        # 如果cookie中存在的，redis中没有，则生成新的购物车数据
+        redis_conn = get_redis_connection('default')
+        cart_dict_redis = redis_conn.hgetall('cart_%s' % user.id)  # 内容是byte类型的字典
+
+        # 合并购物车上商品数量信息
+        for sku_id, count in cart_dict_cookie.items():
+            # 先转码成byte，再与redis中内容比较
+            # 由于redis中的键与值都是bytes类型，cookie中的sku_id是字符串类型，两者要统一类型再比较
+            sku_id = sku_id.encode()
+
+            if sku_id in cart_dict_redis:
+                origin_count = cart_dict_redis[sku_id]
+                # redis中的count是bytes, cookie中的count是整数，无法求和, 所以，转完数据类型在求和
+                count += int(origin_count)
+
+            # 将cookie中的购物车数据合并到redis中
+            cart_dict_redis[sku_id] = count
+
+        if cart_dict_redis:
+            # redis_conn.hmset()不能传入空字典
+            redis_conn.hmset('cart_%s' % user.id, cart_dict_redis)
+
+        # 清除浏览器购物车cookie
+
+        # 获取next参数，用于判断登陆界面是从哪里来的
+        next = request.GET.get('next')
+        if next is None:
+            # 跳转到首页
+            response = redirect(reverse('goods:index'))
+        else:
+            # 从哪儿来，回哪儿去
+            response = redirect(next)
+
+        # 清除cookie
+        response.delete_cookie('cart')
+
+        return response
 
 
 class LogoutView(View):
