@@ -63,7 +63,7 @@ class OrderInfo(BaseModel):
 
 
 class OrderGoods(BaseModel):
-    """订单商品"""
+    """订单商品, 一个订单对应多个订单商品"""
     order = models.ForeignKey(OrderInfo, verbose_name="订单")
     sku = models.ForeignKey(GoodsSKU, verbose_name="订单商品")
     count = models.IntegerField(default=1, verbose_name="数量")

@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import JsonResponse
 from django.utils.decorators import classonlymethod
 from django.utils.six import wraps
@@ -38,3 +39,11 @@ class LoginRequiredJSONMinix(object):
         # 只能由同时继承了此类和View类的子类调用
         view = super().as_view()
         return login_required_json(view)  # 验证
+
+
+class TransactionAtomicMixin(object):
+    """提供数据库事务功能"""
+    @classmethod
+    def as_view(cls, **initkwargs):
+        view = super(TransactionAtomicMixin, cls).as_view(**initkwargs)
+        return transaction.atomic(view)

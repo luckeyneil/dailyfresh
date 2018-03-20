@@ -125,11 +125,13 @@
                 }).done(function (data) {
                     if (1 == data.code) {
                         // 用户登录
+                        alert(data.msg);
                         location.href = '/users/login';
-                    } else if (5 == data.code) {
+                    } else if (7 == data.code) {
                         alert("库存不足，请修改订单！");
                     } else if (0 == data.code) {
                         // 下单成功
+{#                        alert(data.msg);#}
                         $('.popup_con').fadeIn('fast', function () {
                             setTimeout(function () {
                                 $('.popup_con').fadeOut('fast', function () {
@@ -138,6 +140,8 @@
                                 });
                             }, 3000)
                         });
+                    } else {
+                        alert(data.msg);
                     }
                 }).fail(function () {
                     alert('下单失败')
