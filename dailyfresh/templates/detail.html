@@ -12,7 +12,8 @@
                 <span></span>
                 <ul class="subnav">
                     {% for category in categorys %}
-                        <li><a href="#" class="{{ category.logo }}">{{ category.name }}</a></li>
+                        <li><a href="{% url 'goods:list' category.id 1 %}"
+                               class="{{ category.logo }}">{{ category.name }}</a></li>
                     {% endfor %}
                 </ul>
             </div>
@@ -22,7 +23,7 @@
     <div class="breadcrumb">
         <a href="/">全部分类</a>
         <span>></span>
-        <a href="#">{{ sku.category.name }}</a>
+        <a href="{% url 'goods:list' sku.category.id 1 %}">{{ sku.category.name }}</a>
         <span>></span>
         <a href="#">商品详情</a>
     </div>
@@ -30,37 +31,45 @@
     <div class="goods_detail_con clearfix">
         <div class="goods_detail_pic fl"><img src="{{ sku.default_image.url }}"></div>
 
-        <div class="goods_detail_list fr">
-            <h3>{{ sku.name }}</h3>
-            <p>{{ sku.title }}</p>
-            <div class="prize_bar">
-                <span class="show_pirze">¥<em>{{ sku.price }}</em></span>
-                <span class="show_unit">单  位：{{ sku.unit }}</span>
-            </div>
-            {% if other_skus %}
-                <div>
-                    <p>其他规格:</p>
-                    <ul>
-                        {% for sku in other_skus %}
-                            {#                        <li><a href="{% url 'goods:detail' sku.id %}">{{ sku.price }}/{{ sku.unit }}</a></li>#}
-                        {% endfor %}
-                    </ul>
+        <form method="post" action="{% url 'orders:place' %}">   {# post表单，跳转到订单页面 #}
+            {% csrf_token %}  {# csrf验证 #}
+            <input type="hidden" name="sku_ids" value="{{ sku.id }}">
+            {# 隐藏提交sku_id的input,注意，为了跟从购物车过去的保持一致，所以name也改成sku_ids #}
+
+            <div class="goods_detail_list fr">
+                <h3>{{ sku.name }}</h3>
+                <p>{{ sku.title }}</p>
+                <div class="prize_bar">
+                    <span class="show_pirze">¥<em>{{ sku.price }}</em></span>
+                    <span class="show_unit">单  位：{{ sku.unit }}</span>
                 </div>
-            {% endif %}
-            <div class="goods_num clearfix">
-                <div class="num_name fl">数 量：</div>
-                <div class="num_add fl">
-                    <input type="text" class="num_show fl" id="num_show" value="1">
-                    <a href="javascript:;" class="add fr" id="add">+</a>
-                    <a href="javascript:;" class="minus fr" id="minus">-</a>
+                {% if other_skus %}
+                    <div>
+                        <p>其他规格:</p>
+                        <ul>
+                            {% for sku in other_skus %}
+                                <li><a href="{% url 'goods:detail' sku.id %}">{{ sku.price }}元/{{ sku.unit }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+                <div class="goods_num clearfix">
+                    <div class="num_name fl">数 量：</div>
+                    <div class="num_add fl">
+                        <input type="text" class="num_show fl" id="num_show" name="count" value="1">   {# 商品数量 #}
+                        <a href="javascript:;" class="add fr" id="add">+</a>
+                        <a href="javascript:;" class="minus fr" id="minus">-</a>
+                    </div>
+                </div>
+                <div class="total">总价：<em>{{ sku.price }}</em>元</div>
+                <div class="operate_btn">
+{#                    <a href="javascript:;" class="buy_btn" id="buy_btn">立即购买</a>#}
+                    <input type="submit" class="buy_btn" id="buy_btn" value="立即购买">  {# 改为提交按钮 #}
+                    <a href="javascript:;" class="add_cart" sku_id="{{ sku.id }}" id="add_cart">加入购物车</a>
                 </div>
             </div>
-            <div class="total">总价：<em>{{ sku.price }}</em>元</div>
-            <div class="operate_btn">
-                <a href="javascript:;" class="buy_btn" id="buy_btn">立即购买</a>
-                <a href="javascript:;" class="add_cart" sku_id="{{ sku.id }}" id="add_cart">加入购物车</a>
-            </div>
-        </div>
+        </form>
+
     </div>
 
     <div class="main_wrap clearfix">
@@ -111,7 +120,7 @@
 {% endblock %}
 
 {% block bottom_files %}
-    <script type="text/javascript" src="{% static 'js/jquery-1.12.4.min.js' %}"></script>
+{#    <script type="text/javascript" src="{% static 'js/jquery-1.12.4.min.js' %}"></script>#}
     <script type="text/javascript">
         $("#tag_detail").click(function () {
             $("#tag_comment").removeClass("active");

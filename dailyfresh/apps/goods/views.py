@@ -124,7 +124,7 @@ class IndexView(BaseCartView):
         # 补充购物车数据
         # context.update(cart_num=cart_num)
         context['cart_num'] = cart_num
-
+        print('index中cart_num=',cart_num)
         return render(request, 'index.html', context)
 
 
@@ -149,7 +149,7 @@ class DetailView(BaseCartView):
             # 获取类别
             categorys = GoodsCategory.objects.all()
 
-            # 从订单中获取评论信息
+            # 从订单中获取评论信息,orders应用中的OrderGoods模型类
             sku_orders = sku.ordergoods_set.all().order_by('-create_time')[:30]
             if sku_orders:
                 for sku_order in sku_orders:
@@ -161,7 +161,7 @@ class DetailView(BaseCartView):
             # 获取最新推荐
             new_skus = GoodsSKU.objects.filter(category=sku.category).order_by("-create_time")[:2]
 
-            # 获取其他规格的商品
+            # 获取其他规格的商品  SPU
             other_skus = sku.goods.goodssku_set.exclude(id=sku_id)
 
             context = {
@@ -200,7 +200,8 @@ class DetailView(BaseCartView):
             # 只保存最多5条记录
             redis_conn.ltrim("history_%s" % user_id, 0, 4)
 
-        context.update({"cart_num": cart_num})
+        # context.update({"cart_num": cart_num})
+        context['cart_num'] = cart_num
 
         return render(request, 'detail.html', context)
 
@@ -210,7 +211,26 @@ class ListView(BaseCartView):
     """商品列表"""
 
     def get(self, request, category_id, page_num):
+        """
+        需要知道是展示哪一类商品的列表
+        需要知道展示的是第几页
+        需要知道排序的规则，默认，价格，人气
+        请求方法是get,只为了获取数据
+        外界需要传递相关参数到商品列表视图中，就需要在视图中进行参数校验
 
+        需要查询的数据:
+            排序方式，sort
+            购物车信息，cart_num
+            商品分类信息，当前分类和全部分类
+            新品推荐信息，在GoodsSKU表中，查询特定类别信息，按照时间倒序
+            商品列表信息，所有SKU的排序列表
+            商品分页信息，
+
+        :param request: 请求对象
+        :param category_id: 商品分类id
+        :param page_num: 页码
+        :return:
+        """
         # 获取sort参数:如果用户不传，就是默认的排序规则
         sort = request.GET.get('sort', 'default')
 
@@ -223,7 +243,6 @@ class ListView(BaseCartView):
 
         # 购物车
         cart_num = self.get_cart_num(request)
-
 
         # 查询商品所有类别
         categorys = GoodsCategory.objects.all()

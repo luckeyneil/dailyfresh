@@ -13,6 +13,8 @@ from django_redis import get_redis_connection
 
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer, SignatureExpired
 from celerytasks.tasks import send_active_email
+from goods.models import GoodsSKU
+from goods.views import BaseCartView
 from users.models import User, Address
 
 # Create your views here.
@@ -275,7 +277,7 @@ class LogoutView(View):
         return redirect(reverse('goods:index'))
 
 
-class AddressView(LoginRequiredMinix, View):
+class AddressView(LoginRequiredMinix, BaseCartView):
     """用户地址"""
 
     def get(self, request):
@@ -289,7 +291,7 @@ class AddressView(LoginRequiredMinix, View):
             # address = user.address_set.order_by('create_time')[0]
             print(111)
             address = user.address_set.latest('create_time')
-            print('address=', address)
+            # print('address=', address)
             # address=address.objects.get('detail_addr')
             # print('address=', address)
 
@@ -297,10 +299,13 @@ class AddressView(LoginRequiredMinix, View):
             # 如果地址信息不存在
             address = None
 
+        cart_num = self.get_cart_num(request)
+
         # 构造上下文
         context = {
             # 'user':user, # request中自带user,调用模板时，request会传给模板
-            'address': address
+            'address': address,
+            'cart_num': cart_num
         }
 
         # return HttpResponse('这是用户中心地址页面')
@@ -346,11 +351,48 @@ class InfoView(LoginRequiredMinix, View):
 
     def get(self, request):
         """提供用户信息的页面"""
-        return render(request, 'user_center_info.html')
+        # 从request中获取user对象，中间件从验证请求中的用户，所以request中带有user
+        user = request.user
 
-    def post(self, request):
-        """修改地址信息"""
-        pass
+        try:
+            # 查询用户地址：根据创建时间排序，取第1个地址
+            # address = Address.objects.filter(user=user).order_by('create_time')[0]
+            # address = user.address_set.order_by('create_time')[0]
+            print(111)
+            address = user.address_set.latest('create_time')
+            # print('address=', address)
+            # address=address.objects.get('detail_addr')
+            # print('address=', address)
+
+        except Address.DoesNotExist:
+            # 如果地址信息不存在
+            address = None
+
+        # 获取所有
+        redis_conn = get_redis_connection('default')
+
+        # 从Redis中获取用户浏览商品的sku_id，在redis中需要维护商品浏览顺序[8,2,5]
+        sku_ids = redis_conn.lrange("history_%s" % user.id, 0, 4)
+
+        # 根据sku_ids获取到对应的sku
+        # 不能使用id in sku_ids来判断，因为这样获取到的是按照数据库id排序的sku
+        # 我们要的，是按照浏览记录排序的sku
+        skus = []
+        for sku_id in sku_ids:
+            try:
+                sku = GoodsSKU.objects.get(id=sku_id)
+            except GoodsSKU.DoesNotExist:
+                continue
+            skus.append(sku)
+
+        # 构造上下文
+        context = {
+            # 'user':user, # request中自带user,调用模板时，request会传给模板
+            'address': address,
+            'skus': skus
+        }
+
+        return render(request, 'user_center_info.html', context)
 
 
 class OrderView(LoginRequiredMinix, View):

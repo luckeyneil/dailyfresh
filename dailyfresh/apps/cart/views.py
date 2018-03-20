@@ -13,7 +13,7 @@ from goods.models import GoodsSKU
 
 class AddCartView(View):
     """
-    添加购物车内容的视图，为post请求
+    点击添加购物车响应的视图，为post请求
     """
 
     def post(self, request):
@@ -178,7 +178,8 @@ class AddCartView(View):
             # hgetall()
             cart_num = 0
             cart_dict = redis_conn.hgetall('cart_%s' % user_id)
-            print(cart_dict)
+            print('cart_dict=', cart_dict)  # 若不存在，获取到的也是空字典
+            print('type(cart_dict)=', type(cart_dict))
             # cart_dict2 = redis_conn.hgetall('cart_11')
             # print(cart_dict2)
             # if not cart_dict:
@@ -251,6 +252,13 @@ class CartInfoView(View):
         skus = []
         total_count = 0
         total_amount = 0
+
+        sku_str = GoodsSKU.objects.get(id='1')
+        print('sku_str.id=',sku_str.id)
+        sku_int = GoodsSKU.objects.get(id=1)
+        print('sku_int.id=',sku_int.id)
+        sku_byte = GoodsSKU.objects.get(id=b'1')
+        print('sku_byte.id=',sku_byte.id)
 
         for sku_id, count in cart_dict.items():
             try:
@@ -334,7 +342,7 @@ class CartUpdateView(View):
         print('stock=', stock)
         if count > int(stock):
             print('超出库存')
-            return JsonResponse({'code': 4, 'msg': '超出库存'})
+            return JsonResponse({'code': 4, 'message': '超出库存'})
 
 
             # 判断用户是否登陆
@@ -394,7 +402,6 @@ class CartUpdateView(View):
 
         # 响应结果
         return JsonResponse({'code': 0, 'message': '请求成功'})
-
 
 
 class CartDeleteView(View):
