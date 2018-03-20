@@ -21,13 +21,18 @@ class BaseAdmin(admin.ModelAdmin):
         tasks.generate_static_index_html.delay()
         # 删除缓存
         cache.delete('index_page_data')
+        sku_id = obj.id
+        print('admin中sku_id=',sku_id)
+        cache.delete("detail_%s" % sku_id)
 
     def delete_model(self, request, obj):
         """后台保存对象数据时使用"""
         obj.delete()
         tasks.generate_static_index_html.delay()
         cache.delete('index_page_data')
-
+        sku_id = obj.id
+        print('admin中sku_id=',sku_id)
+        cache.delete("detail_%s" % sku_id)
 
 # @admin.register(IndexPromotionBanner)
 class IndexPromotionBannerAdmin(BaseAdmin):

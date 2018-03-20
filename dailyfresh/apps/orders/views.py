@@ -18,7 +18,7 @@ from users.models import Address
 from utils.views import LoginRequiredMinix, LoginRequiredJSONMinix, TransactionAtomicMixin
 
 
-class PlaceOrderView(LoginRequiredMinix, View):
+class PlaceOrderView(View):
     """订单确认页面"""
 
     def post(self, request):
@@ -46,6 +46,7 @@ class PlaceOrderView(LoginRequiredMinix, View):
         :return: render
         """
 
+
         # 判断用户是否登陆：LoginRequiredMixin
         # 获取参数：sku_ids, getlist()会得到列表
         sku_ids = request.POST.getlist('sku_ids')
@@ -56,6 +57,23 @@ class PlaceOrderView(LoginRequiredMinix, View):
         if not sku_ids:
             # 如果sku_ids没有，就重定向到购物车，重选
             return redirect(reverse('cart:info'))
+
+        if not request.user.is_authenticated():
+            # 因为如果用继承父类的方法去验证登录的话，若未登录，则直接调整钻到登录页面，
+            # 没办法在跳转前把数据存放起来，故故只能自己在订单页里判断登录与否，
+            # 若未登录，在保存数据到cookie中之后，将页面跳转到登录页面去
+            try:
+                count = int(count)
+            except:
+                return redirect(reverse('goods:index'))
+
+            cart_dict = {}
+            for sku_id in sku_ids:
+                cart_dict[sku_id] = count
+            cart_json = json.dumps(cart_dict)
+            response = redirect('/users/login/?next=/cart/')
+            response.set_cookie('cart', cart_json)
+            return response
 
         # 定义临时容器
         skus = []
@@ -244,8 +262,8 @@ class CommitOrderView(LoginRequiredJSONMinix, TransactionAtomicMixin, View):
                         sku = GoodsSKU.objects.get(id=sku_id)
                         # 判断商品是否存在
                     except GoodsSKU.DoesNotExist:
-                        # # 这里，为了能让客户先买东西，所以找到无效商品直接跳过，先让他买去吧
-                        # continue
+                        # 注意，里面的每个异常都需要执行回滚操作
+                        transaction.savepoint_rollback(savepoint)
                         return JsonResponse({'code': 5, 'msg': '商品不存在'})
                     else:
                         # 获取商品数量，判断库存 (redis)
@@ -259,10 +277,14 @@ class CommitOrderView(LoginRequiredJSONMinix, TransactionAtomicMixin, View):
                         count = redis_conn.hget('cart_%s' % user.id, sku_id)
                         print('提交订单前遍历的count=',count)
                         if not count:
+                            # 注意，里面的每个异常都需要执行回滚操作
+                            transaction.savepoint_rollback(savepoint)
                             return JsonResponse({'code': 6, 'msg': '商品数量不对'})
 
                         count = int(count)
                         if count > sku.stock:
+                            # 注意，里面的每个异常都需要执行回滚操作
+                            transaction.savepoint_rollback(savepoint)
                             return JsonResponse({'code': 7, 'msg': '商品库存不足'})
 
                         """------------------------不使用锁---------------------------"""

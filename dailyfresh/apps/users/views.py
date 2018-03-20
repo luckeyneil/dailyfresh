@@ -259,6 +259,18 @@ class LoginView(View):
         if next is None:
             # 跳转到首页
             response = redirect(reverse('goods:index'))
+
+        # elif next == '/orders/place/':
+            # 如果是未登录时点击立即购买，本来是要跳转到订单页面的，但是因为重定向不能传参，而且是get请求
+            # 所以转而重定向到购物车页面，先把cookie中的商品信息保存下来
+            # response = redirect(reverse('cart:info'))
+            # sku_ids = request.POST.get('sku_ids')
+            # count = request.POST.get('count')
+            # cart_dict = {}
+            # for sku_id in sku_ids:
+            #     cart_dict[sku_id] = count
+            # cart_json = json.dumps(cart_dict)
+            # response.set_cookie('cart', cart_json)
         else:
             # 从哪儿来，回哪儿去
             response = redirect(next)
@@ -393,15 +405,3 @@ class InfoView(LoginRequiredMinix, View):
         }
 
         return render(request, 'user_center_info.html', context)
-
-
-class OrderView(LoginRequiredMinix, View):
-    """用户订单"""
-
-    def get(self, request):
-        """提供用户订单的页面"""
-        return render(request, 'user_center_order.html')
-
-    def post(self, request):
-        """修改地址信息"""
-        pass

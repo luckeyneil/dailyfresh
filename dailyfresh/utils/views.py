@@ -16,6 +16,7 @@ class LoginRequiredMinix(object):
         return login_required(view)  # 验证
 
 
+# 自定义可返回json数据的登录认证系统
 def login_required_json(view_func):
     # 还原原方法的方法名和注释
     @wraps(view_func)
@@ -43,6 +44,7 @@ class LoginRequiredJSONMinix(object):
 
 class TransactionAtomicMixin(object):
     """提供数据库事务功能"""
+
     @classmethod
     def as_view(cls, **initkwargs):
         view = super(TransactionAtomicMixin, cls).as_view(**initkwargs)
