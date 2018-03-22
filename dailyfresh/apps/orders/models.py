@@ -48,6 +48,19 @@ class OrderInfo(BaseModel):
         (5, "已完成"),
     )
 
+    PAY_METHODS_ENUM = {
+        "CASH": 1,
+        "ALIPAY": 2
+    }
+
+    ORDER_STATUS_ENUM = {
+        "UNPAID": 1,
+        "UNSEND": 2,
+        "UNRECEIVED": 3,
+        "UNCOMMENT": 4,
+        "FINISHED": 5
+    }
+
     order_id = models.CharField(max_length=64, primary_key=True, verbose_name="订单号")
     user = models.ForeignKey(User, verbose_name="下单用户")
     address = models.ForeignKey(Address, verbose_name="收获地址")

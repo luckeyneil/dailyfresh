@@ -207,3 +207,7 @@ HAYSTACK_CONNECTIONS = {
 HAYSTACK_SIGNAL_PROCESSOR = 'haystack.signals.RealtimeSignalProcessor'
 # 搜索结果每页显示数量
 HAYSTACK_SEARCH_RESULTS_PER_PAGE = 2
+
+
+# alipay_url
+ALIPAY_URL = "https://openapi.alipaydev.com/gateway.do"

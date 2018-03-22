@@ -79,19 +79,20 @@
                     csrfmiddlewaretoken: "{{ csrf_token }}"
                 }
                 $.ajax({
-                    url: '/orders/pay',
+                    url: '/orders/pay/',
                     type: 'post',
                     data: req_data,
                     dataType: 'json'
                 }).done(function (data) {
                     if (1 == data.code) {
                         // 用户未登录
-                        location.href = "/users/login";
+                        location.href = "/users/login/";
                     } else if (0 == data.code) {
                         // 成功拿到了支付连接，开启一个新页面，让用户在新页面进行支付
                         window.open(data.url);
                         $.ajax({
-                            url: '/orders/check_pay',
+                            url: '/orders/checkpay/',
+{#                            timeout : 60000, //超时时间设置，单位毫秒#}
                             type: 'get',
                             data: {order_id: order_id},
                             dataType: 'json'
@@ -107,6 +108,7 @@
                         }).fail(function () {
                             alert('支付失败');
                         })
+
                     } else {
                         alert(data.msg);
                     }

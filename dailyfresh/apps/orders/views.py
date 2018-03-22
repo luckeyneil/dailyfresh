@@ -1,5 +1,10 @@
 import json
+import os
 
+import time
+from alipay import AliPay
+from django.conf import settings
+from django.core.cache import cache
 from django.core.paginator import EmptyPage
 from django.core.paginator import Paginator
 from django.core.urlresolvers import reverse
@@ -45,7 +50,6 @@ class PlaceOrderView(View):
         :param request:
         :return: render
         """
-
 
         # 判断用户是否登陆：LoginRequiredMixin
         # 获取参数：sku_ids, getlist()会得到列表
@@ -114,7 +118,7 @@ class PlaceOrderView(View):
         else:
             # 如果是从详情页面过来，商品的数量从request中获取
             # 遍历商品sku_ids:如果是从详情过来，sku_ids只有一个sku_id
-            print('从商品详情页面过来的商品sku_ids=',sku_ids)
+            print('从商品详情页面过来的商品sku_ids=', sku_ids)
             for sku_id in sku_ids:
                 try:
                     sku = GoodsSKU.objects.get(id=sku_id)
@@ -135,13 +139,13 @@ class PlaceOrderView(View):
                 # 这里有一个逻辑，当从购物车过来时，你必须将此种商品的count更新，原先不管此种商品有无count，
                 # 都直接覆盖掉，产品需求如此
                 try:
-                    redis_conn.hset('cart_%s'%user.id, sku_id, count)
+                    redis_conn.hset('cart_%s' % user.id, sku_id, count)
                     # redis_conn.save()
                 except Exception as e:
                     print(e)
 
-                count = redis_conn.hget('cart_%s'%user.id, sku_id)
-                print('从商品详情立即购买过来的count=',count)
+                count = redis_conn.hget('cart_%s' % user.id, sku_id)
+                print('从商品详情立即购买过来的count=', count)
                 # 计算商品总金额
                 amount = sku.price * sku_count
                 # 将商品数量和金额封装到sku对象
@@ -207,7 +211,7 @@ class CommitOrderView(LoginRequiredJSONMinix, TransactionAtomicMixin, View):
         pay_method = int(pay_method)
         sku_ids = request.POST.get('sku_ids')  # 好像没传？  '1,2,3,4,5' 字符串
         sku_ids = sku_ids.split(',')
-        print('sku_ids=',sku_ids)
+        print('sku_ids=', sku_ids)
         # count = request.POST.get('count')  # 没传啊？
         print('[address_id, sku_ids, pay_method]=', [address_id, sku_ids, pay_method])
         # 校验参数：all([address_id, sku_ids, pay_method])
@@ -235,7 +239,7 @@ class CommitOrderView(LoginRequiredJSONMinix, TransactionAtomicMixin, View):
         total_amount = 0
         trans_cost = 10
 
-        # 在生成订单前创建保存点
+        """-------------------------在生成订单前创建保存点--------------------------"""
         savepoint = transaction.savepoint()
 
         try:
@@ -275,7 +279,7 @@ class CommitOrderView(LoginRequiredJSONMinix, TransactionAtomicMixin, View):
                         # 即使sku_id不存在，也能获取，值为None
                         print('cart_%s' % user.id, sku_id)
                         count = redis_conn.hget('cart_%s' % user.id, sku_id)
-                        print('提交订单前遍历的count=',count)
+                        print('提交订单前遍历的count=', count)
                         if not count:
                             # 注意，里面的每个异常都需要执行回滚操作
                             transaction.savepoint_rollback(savepoint)
@@ -309,9 +313,9 @@ class CommitOrderView(LoginRequiredJSONMinix, TransactionAtomicMixin, View):
                             # 回滚
                             transaction.savepoint_rollback(savepoint)
                             return JsonResponse({'code': 9, 'message': '下单失败'})
-                        # elif result:
-                        #     # 如果更新成功，则打断for循环
-                        #     break
+                            # elif result:
+                            #     # 如果更新成功，则打断for循环
+                            #     break
                     price = sku.price
 
                     # 保存订单商品数据OrderGoods(能执行到这里说明无异常)
@@ -337,11 +341,11 @@ class CommitOrderView(LoginRequiredJSONMinix, TransactionAtomicMixin, View):
 
         except Exception as e:
             print(e)
-            # 出现任何异常都回滚
+            """------------------------出现任何异常都回滚------------------------------"""
             transaction.savepoint_rollback(savepoint)
             return JsonResponse({'code': 8, 'msg': '下单失败'})
         else:
-            # 没有异常，就手动提交
+            """-------------------------没有异常，就手动提交----------------------------"""
             transaction.savepoint_commit(savepoint)
 
         # 订单生成后删除购物车(hdel), 也可用sku_ids列表进行删除，将列表*号拆包
@@ -364,6 +368,17 @@ class UserOrdersView(LoginRequiredMinix, View):
             order.skus = []
             order_skus = order.ordergoods_set.all()
             for order_sku in order_skus:
+                """
+                --------------------------------------------------------------------
+                这里的唯一目的，是要保存一个固定的历史单价，历史数量，所以，才会把订单商品的
+                单价和数量赋值给sku对象。
+                想一想，这次修改了sku对象之后，下次再提取出sku对象，sku对象里面的单价和数量是
+                我下面赋值给他的？还是数据库里面的？答案当然是数据库里面的，这里只是临时赋值，
+                并没有保存到数据库中，只是为了在html页面中方便调用而已。
+                那不赋值行不行？
+                当然行，因为历史单价和数量早已经保存在订单商品表中了。
+                --------------------------------------------------------------------
+                """
                 sku = order_sku.sku
                 sku.count = order_sku.count
                 sku.price = order_sku.price
@@ -401,3 +416,200 @@ class UserOrdersView(LoginRequiredMinix, View):
         }
 
         return render(request, "user_center_order.html", context)
+
+
+class PayView(LoginRequiredJSONMinix, View):
+    """点击支付的请求，json，post"""
+
+    def post(self, request):
+        """
+
+        :param request:
+        :return:
+        """
+        order_id = request.POST.get('order_id')  # 获取订单的订单的id
+
+        if not order_id:
+            return JsonResponse({'code':2, 'msg':'订单号为空'})
+
+        """----------根据商品订单号 查询当前订单里的所有的商品----------"""
+
+        # 条件1 订单号存在
+        # 条件2 订单属于当前的用户
+        # 条件3 只有状态是待支付1 的时候 才能支付
+        # 条件4  只有支付方式是支付宝
+        try:
+            order = OrderInfo.objects.get(order_id=order_id, user=request.user,
+                                          status=OrderInfo.ORDER_STATUS_ENUM['UNPAID'],
+                                          pay_method=OrderInfo.PAY_METHODS_ENUM['ALIPAY'])
+        except OrderInfo.DoesNotExist:
+            return JsonResponse({'code': 3, 'msg': '订单错误'})
+
+
+        # 读取公钥私钥的信息
+        private_path = os.path.join(settings.BASE_DIR, 'apps/orders/app_private_key.pem')
+        public_path = os.path.join(settings.BASE_DIR, 'apps/orders/alipay_public_pay.pem')
+        app_private_key_string = open(private_path).read()
+        alipay_public_key_string = open(public_path).read()
+
+        # 创建alipay对象,进行各种有关alipay的操作
+        alipay = AliPay(
+            appid="2016091100483591",  # 注册的应用的id
+            app_notify_url=None,  # 默认回调url，公网才能用
+            app_private_key_string=app_private_key_string,
+            alipay_public_key_string=alipay_public_key_string,  # 支付宝的公钥，验证支付宝回传消息使用，不是你自己的公钥,
+            sign_type="RSA2",  # 只能 RSA2
+            debug=True  # 默认False,用沙箱模式，改为True
+        )
+
+        # 发送支付请求， 返回url后拼接的字符串
+        order_string = alipay.api_alipay_trade_page_pay(
+            out_trade_no=order_id,
+            total_amount=str(order.total_amount),  # 这里，部支持decimal，转码为字符串
+            subject='天天生鲜订单',
+            return_url=None,
+            notify_url=None # 可选, 不填则使用默认notify url
+        )
+
+        url = settings.ALIPAY_URL + "?" + order_string
+
+        # print('url=',url)
+
+        return JsonResponse({'code':0, 'msg':'发送支付请求成功', 'url': url})
+
+
+class CheckPayView(LoginRequiredJSONMinix,View):
+    """检查支付状态的视图，返回json"""
+
+    def get(self, request):
+        """
+
+        :param request:
+        :return:
+        """
+        order_id = request.GET.get('order_id')  # 商品订单号
+        print('获取到的order_id=',order_id)
+
+        if not order_id:
+            return JsonResponse({'code': 2, 'msg': '订单号错误'})
+
+            # 根据商品订单号 查询当前订单里的所有的商品
+
+        # 条件1 订单号存在
+        # 条件2 订单属于当前的用户
+        # 条件3 只有状态是待支付1 的时候 才能支付
+        # 条件4  只有支付方式是支付宝
+        try:
+            order = OrderInfo.objects.get(order_id=order_id, user=request.user,
+                                          status=OrderInfo.ORDER_STATUS_ENUM['UNPAID'],
+                                          pay_method=OrderInfo.PAY_METHODS_ENUM['ALIPAY'])
+        except OrderInfo.DoesNotExist:
+            return JsonResponse({'code': 3, 'msg': '订单错误'})
+
+        # 读取公钥私钥的信息
+        private_path = os.path.join(settings.BASE_DIR, 'apps/orders/app_private_key.pem')
+        public_path = os.path.join(settings.BASE_DIR, 'apps/orders/alipay_public_pay.pem')
+        app_private_key_string = open(private_path).read()
+        alipay_public_key_string = open(public_path).read()
+
+        # 创建alipay对象,进行各种有关alipay的操作
+        alipay = AliPay(
+            appid="2016091100483591",  # 注册的应用的id
+            app_notify_url=None,  # 默认回调url，公网才能用
+            app_private_key_string=app_private_key_string,
+            alipay_public_key_string=alipay_public_key_string,  # 支付宝的公钥，验证支付宝回传消息使用，不是你自己的公钥,
+            sign_type="RSA2",  # 只能 RSA2
+            debug=True  # 默认False,用沙箱模式，改为True
+        )
+
+
+        while True:
+            # 去支付宝查询当前订单的支付状态
+            print('开始查询支付状态')
+            try:
+                alipay_response = alipay.api_alipay_trade_query(order_id)
+            except Exception as e:
+                print('e:',e)
+                # 为了防止受网络影响导致的查询链接失败报错，所以在查询链接失败时，返回循环再次查询
+                continue
+
+            print('已查询到支付状态')
+
+            # 获取响应码和响应信息
+            code = alipay_response.get('code')
+            trade_status = alipay_response.get('trade_status')
+
+            if code == '10000' and trade_status == 'TRADE_SUCCESS':
+                # 支付成功
+                # 状态改为未发货
+                print('支付成功')
+                order.status = OrderInfo.ORDER_STATUS_ENUM['UNSEND']
+                # 保存支付宝的交易号
+                order.trade_id = alipay_response.get('trade_no')
+                # 保存到数据库
+                order.save()
+                return JsonResponse({'code': 0, 'msg': '支付成功'})
+            elif code == '40004' or (code == '10000' and trade_status == 'WAIT_BUYER_PAY'):
+                # 再次查询
+                print('还在查询中')
+                time.sleep(1)
+                continue
+            else:
+                return JsonResponse({'code': 4, 'msg': '支付失败'})
+
+
+class CommentView(LoginRequiredMinix, View):
+    """评论页面"""
+
+    def get(self, request, order_id):
+        """提供评论页面"""
+        user = request.user
+        try:
+            order = OrderInfo.objects.get(order_id=order_id, user=user)
+        except OrderInfo.DoesNotExist:
+            return redirect(reverse("orders:info"))
+
+        order.status_name = OrderInfo.ORDER_STATUS[order.status]
+        order.skus = []
+        order_skus = order.ordergoods_set.all()
+        for order_sku in order_skus:
+            sku = order_sku.sku
+            sku.count = order_sku.count
+            sku.amount = sku.price * sku.count
+            order.skus.append(sku)
+
+        return render(request, "order_comment.html", {"order": order})
+
+    def post(self, request, order_id):
+        """处理评论内容"""
+        user = request.user
+        try:
+            order = OrderInfo.objects.get(order_id=order_id, user=user)
+        except OrderInfo.DoesNotExist:
+            return redirect(reverse("orders:info"))
+
+        # 获取评论条数
+        total_count = request.POST.get("total_count")
+        total_count = int(total_count)
+
+        for i in range(1, total_count + 1):
+            # 要评论的商品
+            sku_id = request.POST.get("sku_%d" % i)
+            # 获取评论内容
+            content = request.POST.get('content_%d' % i, '')
+            try:
+                order_goods = OrderGoods.objects.get(order=order, sku_id=sku_id)
+            except OrderGoods.DoesNotExist:
+                continue
+            # 保存评论到数据库
+            order_goods.comment = content
+            order_goods.save()
+
+            # 清除商品详情缓存
+            cache.delete("detail_%s" % sku_id)
+
+        # 状态变成已完成
+        order.status = OrderInfo.ORDER_STATUS_ENUM["FINISHED"]
+        order.save()
+
+        return redirect(reverse("orders:info", kwargs={"page": 1}))
